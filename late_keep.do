@@ -15,6 +15,7 @@ NAIPW - LATE
 To do:
 AIPW - LATT
 NAIPW -LATT
+AIPW in action
 */
 
 capture program drop late
