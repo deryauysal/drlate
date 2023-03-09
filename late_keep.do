@@ -6,7 +6,7 @@
 /*Author: DU
 ThisVersion: IPWRA LATE & LATT
 RA LATE & LATT
-IPW LATE & LATT
+NIPW LATE & LATT
 AIPW -LATE
 NAIPW - LATE
 *Comments from 22.08.2022 Tymon
@@ -82,7 +82,7 @@ syntax  namelist(min=4) [if] [, xvarsy(varlist) xvarst(varlist) xvarsips(varlist
 		local stat late
 	}	
 		marksample touse			
-	quietly {
+//	quietly {
 /*
 		tempvar troot 
 		tempname valuest
@@ -229,7 +229,7 @@ tempname dmeanz1 dmeanz0
 		quietly summarize `tvar' if `zvar'  == 0 & `touse'==1
 		scalar `dmeanz0' = r(mean)
 
-	tempvar y1hat y0hat d1hat d0hat ips  invw0 invw1 omega1 omega0 term1 term2 term3 term4 
+	tempvar y1hat y0hat d1hat d0hat ips  w1 w1s invw0 invw1 omega1 omega0 term1 term2 term3 term4 
 	tempname bips by1 by0 bd1 bd0 denom1s denom0s num1s num0s nums  denoms lates
 
 	if "`method'" == "ipwra" {
@@ -582,8 +582,257 @@ qui set maxiter 5
 }
 }
 	}
-
 	else if "`method'" == "ipw" {
+			//IPS
+set maxiter 300
+
+  `zmodel' `zvar' `xvarsips' if `touse'==1 [pw = `samplew']
+  matrix `bips' = e(b)
+  predict  double `ips'
+		
+//Conditional mean of y1 & y0#
+if "`stat'" == "late" {
+
+qui gen `y1hat' = ((`zvar')/`ips')*`yvar' if `touse'==1
+
+qui gen `y0hat' = (((1-`zvar'))/(1-`ips'))*`yvar' if `touse'==1
+
+
+
+//Conditional mean of d1 & d0#
+
+
+	    if `dmeanz1'==1 {
+        ge double `d1hat'= 1
+	    }
+		else {
+qui gen `d1hat' = ((`zvar')/`ips')*`tvar' if `touse'==1
+
+}
+	    
+	    if `dmeanz0'==0 {
+        ge double `d0hat' = 0
+	    }
+		else {
+		
+qui gen `d0hat' = (((1-`zvar'))/(1-`ips'))*`tvar' if `touse'==1
+
+
+		}
+		
+		
+qui sum `d1hat' if `touse'==1 [iw = `samplew']
+matrix `denom1s' = r(mean)
+qui sum `d0hat'  if `touse'==1 [iw = `samplew']
+matrix `denom0s' = r(mean)
+qui sum `y1hat' if `touse'==1  [iw = `samplew']
+matrix `num1s' = r(mean)
+qui sum `y0hat' if `touse'==1 [iw = `samplew']
+matrix `num0s' = r(mean)
+matrix `nums' = `num1s'-`num0s'
+matrix `denoms' = `denom1s'-`denom0s'
+matrix `lates' =`nums'*invsym(`denoms')
+
+//drop y1hat y0hat d1hat d0hat ips
+	
+//Moment Functions
+local eqips (eqips:`zvar' - exp({zhat: `xvarsips' _cons})/(1+exp({zhat:})))
+
+local eqips_inst instruments(eqips: `xvarsips')
+
+
+local eqd1 (eqd1: ((`zvar'/(exp({zhat:})/(1+exp({zhat:}))))*`tvar') - ({d1:  _cons}))
+local eqd0 (eqd0: (((1-`zvar')/(1-(exp({zhat:})/(1+exp({zhat:})))))*`tvar')-({d0:  _cons})) 
+
+
+
+		if `dmeanz0' == 0 & `dmeanz1' !=1 {
+local denom (denom: {denom}- ({d1:}))
+		}
+		else if `dmeanz0' != 0 & `dmeanz1' ==1 {
+local denom (denom: {denom}- (1-({d0:})))
+		}
+		else {
+local denom (denom: {denom}- (({d1:})-({d0:})))
+		}
+
+
+
+
+local eqy0 (eqy0: (((1-`zvar')/(1-(exp({zhat:})/(1+exp({zhat:})))))*`yvar')-({y0:   _cons})) 
+
+local eqy0_inst instruments(eqy0:  )
+
+local eqy1 (eqy1: ((`zvar'/(exp({zhat:})/(1+exp({zhat:}))))*`yvar')-({y1:   _cons})) 
+
+local eqy1_inst instruments(eqy1:  )
+
+local num (num: {num}-(({y1:})-({y0:})))
+
+
+
+local late (late: ({late} - {num}/{denom}))
+
+} 
+	 
+if "`stat'" == "latt" {
+	
+
+	 sum `zvar' if `touse'==1
+	matrix `w1s' = r(mean)
+	 sum `zvar' if `touse'==1
+	scalar `w1' = r(mean)
+	
+	 ge double `omega1'= (`zvar')/`w1'
+	 ge double `omega0'= (((1-`zvar')*`ips')/(1-`ips'))/`w1'
+	
+
+			
+	
+
+	
+	if `dmeanz1'==1 {
+		 ge double `d1hat'= 1
+	}
+	else {
+		 gen double `d1hat' = `omega1'*`tvar' if `touse'==1
+
+	}
+	
+	if `dmeanz0'==0 {
+		 ge double `d0hat'= 0
+	}
+	else {
+		
+		 gen double `d0hat' = `omega0'*`tvar' if `touse'==1
+		
+	}
+	
+	
+	 gen double `y1hat' = `omega1'*`yvar' if `touse'==1
+	
+	 gen double `y0hat' = `omega0'*`yvar' if `touse'==1	
+
+	
+	 sum `d1hat'  if `touse'==1 [iw = `samplew']
+	matrix `denom1s' = r(mean)
+	 sum `d0hat'  if `touse'==1 [iw = `samplew']
+	matrix `denom0s' = r(mean)
+	 sum `y1hat'  if `touse'==1 [iw = `samplew']
+	matrix `num1s' = r(mean)
+	 sum `y0hat'  if `touse'==1 [iw = `samplew']
+	matrix `num0s' = r(mean)
+	matrix `nums' = `num1s'-`num0s'
+	matrix `denoms' = `denom1s'-`denom0s'
+	
+	
+	matrix `lates' =`nums'*invsym(`denoms')
+	matrix list `nums'
+	matrix list `denoms'
+	matrix list `lates'
+	
+	//Moment Functions
+	local eqips (eqips:`zvar' - exp({zhat: `xvarsips' _cons})/(1+exp({zhat:})))
+	
+	local eqips_inst instruments(eqips: `xvarsips')
+	
+	local eqw1 (eqw1: (`zvar' - {w1: _cons}))
+    local eqw1_inst instruments(eqw1: )
+
+	
+
+
+	local eqd1 (eqd1: ((`zvar'*`tvar')/{w1:} - ({d1: _cons})))
+	
+	local eqd1_inst instruments(eqd1: )
+	
+		local eqd0 (eqd0: (((1-`zvar')*(exp({zhat:})/(1+exp({zhat:})))/((1/(1+exp({zhat:})))))*`tvar')/{w1:}-({d0:  _cons}))		
+		local eqd0_inst instruments(eqd0:  )
+	
+
+		if `dmeanz0' == 0 & `dmeanz1' !=1 {
+			local denom (denom: (({denom}-(({d1: })-(0)))))
+		}
+		else if `dmeanz0' != 0 & `dmeanz1' ==1 {
+			local denom (denom: (({denom}-(1-({d0: })))))
+		}
+		else {
+			local denom (denom: (({denom}-(({d1: })-({d0: })))))
+		}
+	
+	
+
+	
+		local eqy1 (eqy1: ((`zvar'*`yvar')/{w1:} - ({y1: _cons})))
+	
+	    local eqy1_inst instruments(eqy1: )
+	
+		local eqy0 (eqy0: (((1-`zvar')*(exp({zhat:})/(1+exp({zhat:})))/((1/(1+exp({zhat:})))))*`yvar')/{w1:}-({y0:  _cons}))		
+		local eqy0_inst instruments(eqy0:  )
+	
+
+		
+		local num (num: (({num}-(({y1: })-({y0: })))))
+		
+	
+	
+	
+	local late (late: ({late} - {num}/{denom}))
+}	 
+	 
+	 
+	 if "`stat'" == "late" {
+if `dmeanz0' !=0 & `dmeanz1' !=1  {
+matrix initial = (`bips', `denom0s', `denom1s', `num0s', `num1s', `nums', `denoms')	
+local k = colsof(initial )
+matrix I = I(`k')  
+set maxiter 5
+ gmm   `eqips' `eqd0' `eqd1'  `eqy0' `eqy1'  `num' `denom'  [pw = `samplew'],  `eqips_inst' `eqd0_inst' `eqd1_inst' `eqy0_inst' `eqy1_inst' onestep winitial(I) from(initial) quickderivatives vce(`vce')
+		}
+else if `dmeanz0' == 0 & `dmeanz1' !=1 {
+matrix initial = (`bips', `denom1s', `num0s', `num1s', `nums', `denoms')	
+local k = colsof(initial )
+matrix I = I(`k')  
+qui set maxiter 5
+ gmm   `eqips'  `eqd1'  `eqy0' `eqy1'  `num' `denom' [pw = `samplew'],  `eqips_inst'  `eqd1_inst'  `eqy0_inst' `eqy1_inst' onestep winitial(I) from(initial) quickderivatives vce(`vce')	
+}	
+else if `dmeanz0' !=0 & `dmeanz1' ==1 {
+matrix initial = (`bips', `denom0s', `num0s', `num1s', `nums', `denoms')	
+matrix list initial
+local k = colsof(initial )
+matrix I = I(`k')  
+qui set maxiter 5
+ gmm   `eqips'  `eqd0' `eqy0' `eqy1'  `num' `denom'  [pw = `samplew'],  `eqips_inst'  `eqd0_inst'  `eqy0_inst' `eqy1_inst'  onestep winitial(I) from(initial) quickderivatives vce(`vce')	
+}
+}	
+	 
+if "`stat'" == "latt" {
+if `dmeanz0' !=0 & `dmeanz1' !=1  {
+matrix initial =  (`bips', `w1s', `denom0s', `denom1s', `num0s', `num1s', `nums', `denoms')	
+local k = colsof(initial )
+matrix I = I(`k')  
+set maxiter 5
+ gmm   `eqips' `eqw1' `eqd0' `eqd1'  `eqy0' `eqy1'  `num' `denom'  [pw = `samplew'],  `eqips_inst' `eqd0_inst' `eqd1_inst' `eqy0_inst' `eqy1_inst' onestep winitial(I) from(initial) quickderivatives vce(`vce')
+		}
+else if `dmeanz0' == 0 & `dmeanz1' !=1 {
+matrix initial = (`bips', `w1s', `denom1s', `num0s', `num1s', `nums', `denoms')	
+local k = colsof(initial )
+matrix I = I(`k')  
+qui set maxiter 1
+ gmm    `eqips' `eqw1' `eqd1'  `eqy0' `eqy1'  `num' `denom' [pw = `samplew'],  `eqips_inst'  `eqd1_inst'  `eqy0_inst' `eqy1_inst' onestep winitial(I) from(initial) quickderivatives vce(`vce')	
+}	
+else if `dmeanz0' !=0 & `dmeanz1' ==1 {
+matrix initial = (`bips', `w1s', `denom0s', `num0s', `num1s', `nums', `denoms')	
+matrix list initial
+local k = colsof(initial )
+matrix I = I(`k')  
+qui set maxiter 5
+ gmm  `eqips' `eqw1' `eqd0' `eqy0' `eqy1'  `num' `denom'    [pw = `samplew'],  `eqips_inst'  `eqd0_inst'  `eqy0_inst' `eqy1_inst'  onestep winitial(I) from(initial) quickderivatives vce(`vce')	
+}
+}	
+	
+	}
+	else if "`method'" == "nipw" {
 			//IPS
 set maxiter 300
 
@@ -593,13 +842,13 @@ set maxiter 300
 		
 //Conditional mean of y1 & y0#
 if "`stat'" == "late" {
- qui `omodel' `yvar'  if `zvar'==1 & `touse'==1 [pw = `samplew'/`ips']
+qui regress `yvar'  if `zvar'==1 & `touse'==1 [pw = `samplew'/`ips']
 qui matrix `by1' = e(b)
 qui predict double `y1hat'
 
  
  
- qui `omodel' `yvar'  if `zvar'==0 & `touse'==1 [pw = `samplew'/(1-`ips')]
+ qui regress `yvar'  if `zvar'==0 & `touse'==1 [pw = `samplew'/(1-`ips')]
 qui matrix `by0' = e(b)
 qui predict double `y0hat'
 
@@ -611,7 +860,7 @@ qui predict double `y0hat'
 	    }
 		else {
 
-qui `tmodel' `tvar'  if `zvar'==1  & `touse'==1  [pw =  `samplew'/`ips']
+qui regress `tvar'  if `zvar'==1  & `touse'==1  [pw =  `samplew'/`ips']
 matrix `bd1' = e(b)
 qui predict double `d1hat'
 }
@@ -620,7 +869,7 @@ qui predict double `d1hat'
         ge double `d0hat' = 0
 	    }
 		else {
-qui `tmodel' `tvar'  if `zvar'==0  & `touse'==1 [pw =  `samplew'/(1-`ips')]
+qui regress `tvar'  if `zvar'==0  & `touse'==1 [pw =  `samplew'/(1-`ips')]
 matrix `bd0' = e(b)
 qui predict double `d0hat'
 		}
@@ -647,19 +896,6 @@ local eqips_inst instruments(eqips: `xvarsips')
 
 
 
-
-if "`tmodel'" == "logit" {
-local eqd1 (eqd1: ((1.`zvar'/(exp({zhat:})/(1+exp({zhat:}))))*(`tvar' - exp({d1:  _cons})/(1+exp({d1:})))))
-           
-local eqd1_inst instruments(eqd1: )
-
-local eqd0 (eqd0: ((0.`zvar'/(1-(exp({zhat:})/(1+exp({zhat:})))))*(`tvar'-exp({d0:  _cons})/(1+exp({d0:}))))) 
-
-local eqd0_inst instruments(eqd0:  )
-}
-
-
-if "`tmodel'" =="regress" {
 local eqd1 (eqd1: ((1.`zvar'/(exp({zhat:})/(1+exp({zhat:}))))*(`tvar' - ({d1:  _cons}))))
            
 local eqd1_inst instruments(eqd1: )
@@ -667,20 +903,9 @@ local eqd1_inst instruments(eqd1: )
 local eqd0 (eqd0: ((0.`zvar'/(1-(exp({zhat:})/(1+exp({zhat:})))))*(`tvar'-({d0:  _cons})))) 
 
 local eqd0_inst instruments(eqd0:  )
-}
 
-if "`tmodel'" == "logit" {
-	if `dmeanz0' == 0 & `dmeanz1' !=1 {
-local denom (denom: {denom}- ((exp({d1:})/(1+exp({d1:})))))
-	}
-	else if `dmeanz0' != 0 & `dmeanz1' ==1 {
-local denom (denom: {denom}- (1-((exp({d0:})/(1+exp({d0:}))))))
-	}
-	else {
-local denom (denom: {denom}- (((exp({d1:})/(1+exp({d1:}))))-((exp({d0:})/(1+exp({d0:}))))))
-	}
-}
-else if "`tmodel'" =="regress"  {
+
+
 		if `dmeanz0' == 0 & `dmeanz1' !=1 {
 local denom (denom: {denom}- ({d1:}))
 		}
@@ -690,11 +915,10 @@ local denom (denom: {denom}- (1-({d0:})))
 		else {
 local denom (denom: {denom}- (({d1:})-({d0:})))
 		}
-}
 
 
 
-if "`omodel'" == "regress" {
+
 local eqy0 (eqy0: ((0.`zvar'/(1-(exp({zhat:})/(1+exp({zhat:})))))*(`yvar'-({y0:   _cons})))) 
 
 local eqy0_inst instruments(eqy0:  )
@@ -704,31 +928,7 @@ local eqy1 (eqy1: ((1.`zvar'/(exp({zhat:})/(1+exp({zhat:}))))*(`yvar'-({y1:   _c
 local eqy1_inst instruments(eqy1:  )
 
 local num (num: {num}-(({y1:})-({y0:})))
-}
-else if "`omodel'"  == "logit" {
-local eqy0 (eqy0: ((0.`zvar'/(1-(exp({zhat:})/(1+exp({zhat:})))))*(`yvar'-exp({y0:  _cons})/(1+exp({y0:}))))) 
 
-local eqy0_inst instruments(eqy0:  )
-
-local eqy1 (eqy1: ((1.`zvar'/(exp({zhat:})/(1+exp({zhat:}))))*(`yvar'-exp({y1:  _cons})/(1+exp({y1:}))))) 
-
-local eqy1_inst instruments(eqy1:  )
-
-local num (num: {num}-(((exp({y1: })/(1+exp({y1:}))))-((exp({y0: })/(1+exp({y0:}))))))
-
-}
-else if "`omodel'"  == "poisson"  {
-local eqy0 (eqy0: ((0.`zvar'/(1-(exp({zhat:})/(1+exp({zhat:})))))*(`yvar'-exp({y0:   _cons})))) 
-
-local eqy0_inst instruments(eqy0:  )
-
-local eqy1 (eqy1: ((1.`zvar'/(exp({zhat:})/(1+exp({zhat:}))))*(`yvar'-exp({y1:   _cons})))) 
-
-local eqy1_inst instruments(eqy1:  )
-
-local num (num: {num}-((exp({y1: }))-(exp({y0: }))))
-
-}
 
 local late (late: ({late} - {num}/{denom}))
 
@@ -753,7 +953,7 @@ if "`stat'" == "latt" {
 		ge double `d0hat'= 0
 	}
 	else {
-		qui `tmodel' `tvar'   if `zvar' == 0 & `touse'==1 [pw = `samplew'*(`ips'/(1-`ips'))]
+		qui regress `tvar'   if `zvar' == 0 & `touse'==1 [pw = `samplew'*(`ips'/(1-`ips'))]
 		matrix `bd0' = e(b)
 		qui predict double `d0hat'
 	}
@@ -762,7 +962,7 @@ if "`stat'" == "latt" {
 	matrix `by1' = e(b)
 	qui predict double `y1hat'
 	
-	qui `omodel' `yvar'  if `zvar' == 0 & `touse'==1 [pw = `samplew'*(`ips'/(1-`ips'))]
+	qui regress `yvar'  if `zvar' == 0 & `touse'==1 [pw = `samplew'*(`ips'/(1-`ips'))]
 	matrix `by0' = e(b)
 	qui predict double `y0hat'
 	
@@ -797,37 +997,16 @@ if "`stat'" == "latt" {
 	
 	local eqd1_inst instruments(eqd1: )
 	
-	
-	if "`tmodel'" == "logit" {
-		
-		local eqd0 (eqd0: ((0.`zvar'*((exp({zhat:})/(1+exp({zhat:})))/(1-(exp({zhat:})/(1+exp({zhat:}))))))*(`tvar'-exp({d0:  _cons})/(1+exp({d0:}))))) 
-		
-		local eqd0_inst instruments(eqd0:  )
-	}
-	
-	
-	if "`tmodel'" =="regress" {
+
 		
 		local eqd0 (eqd0: ((0.`zvar'*((exp({zhat:})/(1+exp({zhat:})))/(1-(exp({zhat:})/(1+exp({zhat:}))))))*(`tvar'-({d0:  _cons})))) 
 		
 		local eqd0_inst instruments(eqd0:  )
-	}
+
 	
 
 	
-	
-	if "`tmodel'" == "logit" {
-		if `dmeanz0' == 0 & `dmeanz1' !=1 {
-			local denom (denom: ((1.`zvar'*(`tvar' - ({denom: _cons})))))
-		}
-		else if `dmeanz0' != 0 & `dmeanz1' ==1 {
-			local denom (denom: (1.`zvar'*({denom}-(1-(exp({d0: })/(1+exp({d0:})))))))
-		}
-		else {
-			local denom (denom: (1.`zvar'*({denom}-(({d1: })-(exp({d0: })/(1+exp({d0:})))))))
-		}
-	}
-	else if "`tmodel'" =="regress"  {
+
 		if `dmeanz0' == 0 & `dmeanz1' !=1 {
 			local denom (denom: ((1.`zvar'*(`tvar' - ({denom: _cons})))))
 		}
@@ -837,9 +1016,7 @@ if "`stat'" == "latt" {
 		else {
 			local denom (denom: (1.`zvar'*({denom}-(({d1: })-({d0: })))))
 		}
-	}
 	
-
 	
 	local eqy1 (eqy1: (1.`zvar'*(`yvar'-({y1:  _cons})))) 
 	
@@ -847,7 +1024,7 @@ if "`stat'" == "latt" {
 	
 	
 	
-	if "`omodel'" == "regress" {
+
 
 		local eqy0 (eqy0: ((0.`zvar'*((exp({zhat:})/(1+exp({zhat:})))/(1-(exp({zhat:})/(1+exp({zhat:}))))))*(`yvar'-({y0:   _cons})))) 
 		
@@ -856,27 +1033,8 @@ if "`stat'" == "latt" {
 		
 		local num (num: (1.`zvar'*({num}-(({y1: })-({y0: })))))
 		
-	}
-	else if "`omodel'"  == "logit" {
-		
-		
-		local eqy0 (eqy0: ((0.`zvar'*((exp({zhat:})/(1+exp({zhat:})))/(1-(exp({zhat:})/(1+exp({zhat:}))))))*(`yvar'-exp({y0:  _cons})/(1+exp({y0:}))))) 
-		
-		local eqy0_inst instruments(eqy0:  )
-		
-		local num (num: (1.`zvar'*({num}-(({y1: })-(exp({y0: })/(1+exp({y0:})))))))
-		
-		
-	}
-	else if "`omodel'"  == "poisson"  {
-		local eqy0 (eqy0: ((0.`zvar'*((exp({zhat:})/(1+exp({zhat:})))/(1-(exp({zhat:})/(1+exp({zhat:}))))))*(`yvar'-exp({y0:  _cons})))) 
-		
-		local eqy0_inst instruments(eqy0:  )
-		
-		local num (num: (1.`zvar'*({num}-(({y1: })-(exp({y0: }))))))
-		
-		
-	}
+	
+
 	
 	local late (late: ({late} - {num}/{denom}))
 }	 
@@ -1270,7 +1428,7 @@ qui set maxiter 5
 			//IPS
 set maxiter 300
 
- qui `zmodel' `zvar' `xvarsips' if `touse'==1 [pw = `samplew']
+  `zmodel' `zvar' `xvarsips' if `touse'==1 [pw = `samplew']
  qui matrix `bips' = e(b)
  qui predict double `ips'
 		
@@ -1438,45 +1596,59 @@ local num (num: {num}-({num1}-{num0}) )
 local late (late: ({late} - {num}/{denom}))
 }
 else if "`stat'" == "latt" {
+	
+	
+	 sum `zvar' if `touse'==1
+	matrix `w1s' = r(mean)
+	 sum `zvar' if `touse'==1
+	scalar `w1' = r(mean)
+	
+	 ge double `omega1'= (`zvar')/`w1'
+	 ge double `omega0'= (((1-`zvar')*`ips')/(1-`ips'))/`w1'
+	
+	
 	if `dmeanz1'==1 {
-		ge double `d1hat'= 1
+		 ge double `d1hat'= 1
 	}
 	else {
-		
-		qui regress  `tvar'  if `zvar' == 1 & `touse'==1 [pw = `samplew']
-		matrix `bd1' = e(b)
-		qui predict double `d1hat'
+		 gen double `d1hat' = `omega1'*`tvar' if `touse'==1
+
 	}
-	
-	if `dmeanz0'==0 {
+	  	if `dmeanz0'==0 {
 		ge double `d0hat' = 0
 	}
 	else {
-		qui `tmodel' `tvar' `xvarst'  if `zvar' == 0 & `touse'==1 [pw = `samplew']
+		 `tmodel' `tvar' `xvarst'  if `zvar' == 0 & `touse'==1 [pw = `samplew']
 		matrix `bd0' = e(b)
 		qui predict double `d0hat'
 	}
 	
-	qui regress `yvar' if `zvar' == 1 & `touse'==1 [pw = `samplew']
-	matrix `by1' = e(b)
-	qui predict double `y1hat'
+	gen double `y1hat' = `omega1'*`yvar' if `touse'==1
 	
-	qui `omodel' `yvar' `xvarsy'  if `zvar' == 0 & `touse'==1 [pw = `samplew']
+
+	 `omodel' `yvar' `xvarsy'  if `zvar' == 0 & `touse'==1 [pw = `samplew']
 	matrix `by0' = e(b)
 	qui predict double `y0hat'
 	
-	//qui gen double `term1' = ((`zvar'*`yvar')-((`zvar'-`ips')*`y1hat'))/`ips'
-	qui gen double `term2'  = (`ips'*(1-`zvar')*(`yvar'-`y0hat'))/(1-`ips')+`zvar'*`y0hat'
-	//qui gen double `term3'  = ((`zvar'*`tvar')-((`zvar'-`ips')*`d1hat'))/`ips'
-	qui gen double `term4'  = (`ips'*(1-`zvar')*(`tvar'-`d0hat'))/(1-`ips')+`zvar'*`d0hat'
 	
-	qui sum `d1hat'  if `zvar' == 1 [iw = `samplew']
+	
+
+
+	
+
+	
+	//qui gen double `term1' = ((`zvar'*`yvar')-((`zvar'-`ips')*`y1hat'))/`ips'
+	 gen double `term2'  = (`omega0'*(`yvar'-`y0hat'))+`zvar'*`y0hat'/`w1'
+	//qui gen double `term3'  = ((`zvar'*`tvar')-((`zvar'-`ips')*`d1hat'))/`ips'
+	 gen double `term4'  = (`omega0'*(`tvar'-`d0hat'))+`zvar'*`d0hat'/`w1'
+
+	 sum `d1hat'  if `touse'==1 [iw = `samplew']
 	matrix `denom1s' = r(mean)
-	qui sum `term4'  if `zvar' == 1 [iw = `samplew']
+	 sum `term4'  if `touse'==1 [iw = `samplew']
 	matrix `denom0s' = r(mean)
-	qui sum `y1hat'  if `zvar' == 1 [iw = `samplew']
+	 sum `y1hat'  if `touse'==1 [iw = `samplew']
 	matrix `num1s' = r(mean)
-	qui sum `term2'  if `zvar' == 1 [iw = `samplew']
+	 sum `term2'  if `touse'==1 [iw = `samplew']
 	matrix `num0s' = r(mean)
 	matrix `nums' = `num1s'-`num0s'
 	matrix `denoms' = `denom1s'-`denom0s'
@@ -1484,17 +1656,27 @@ else if "`stat'" == "latt" {
 	
 	matrix `lates' =`nums'*invsym(`denoms')
 	
-	
+	matrix list `nums'
+matrix list `denoms'
+matrix list `lates'
 
 //Moment Functions
+
+	//Moment Functions
 local eqips (eqips:`zvar' - exp({zhat: `xvarsips' _cons})/(1+exp({zhat:})))
 
 local eqips_inst instruments(eqips: `xvarsips')
-
 	
-	local eqd1 (eqd1: ((1.`zvar'*(`tvar' - ({d1: _cons})))))
+	local eqw1 (eqw1: (`zvar' - {w1: _cons}))
+    local eqw1_inst instruments(eqw1: )
+
+	local eqd1 (eqd1: ((`zvar'*`tvar')/{w1:} - ({d1: _cons})))
 	
 	local eqd1_inst instruments(eqd1: )
+	
+	local eqy1 (eqy1: ((`zvar'*`yvar')/{w1:} - ({y1: _cons})))
+	
+	local eqy1_inst instruments(eqy1: )
 	
 	
 	if "`tmodel'" == "logit" {
@@ -1517,33 +1699,29 @@ local eqips_inst instruments(eqips: `xvarsips')
 	
 	if "`tmodel'" == "logit" {
 		if `dmeanz0' == 0 & `dmeanz1' !=1 {
-			local denom (denom: ((1.`zvar'*(`tvar' - ({denom: _cons})))))
+			local denom (denom: ((({d1:} - ({denom: _cons})))))
 		}
 		else if `dmeanz0' != 0 & `dmeanz1' ==1 {
-			local denom (denom: (1.`zvar'*({denom}-(1-(`zvar'*((exp({d0: })/(1+exp({d0:}))))+ ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`tvar'-(exp({d0: })/(1+exp({d0:})))))/(1/(1+exp({zhat:}))))))))
+			local denom (denom: (({denom}-(1-(-`zvar'*((exp({d0: })/(1+exp({d0:}))))+ ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`tvar'-(exp({d0: })/(1+exp({d0:})))))/(1/(1+exp({zhat:}))))/{w1:}))))
 		}
 		else {
-			local denom (denom: (1.`zvar'*({denom}  -(`zvar'*(`tvar'-(exp({d0: })/(1+exp({d0:}))))+ ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`tvar'-(exp({d0: })/(1+exp({d0:})))))/(1/(1+exp({zhat:})))))))
+			local denom (denom: (({denom}  -(`zvar'*(`tvar'-(exp({d0: })/(1+exp({d0:}))))- ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`tvar'-(exp({d0: })/(1+exp({d0:})))))/(1/(1+exp({zhat:}))))/{w1:})))
 		}
 	}
 	else if "`tmodel'" =="regress"  {
 		if `dmeanz0' == 0 & `dmeanz1' !=1 {
-			local denom (denom: ((1.`zvar'*(`tvar' - ({denom: _cons})))))
+			local denom (denom: ((({d1:} - ({denom: _cons})))))
 		}
 		else if `dmeanz0' != 0 & `dmeanz1' ==1 {
-			local denom (denom: (1.`zvar'*({denom}-(1-((`zvar'*({d0:})+ ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`tvar'-{d0:}))/(1/(1+exp({zhat:})))))))))
+			local denom (denom: (({denom}-(1-(-`zvar'*({d0:})+ ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`tvar'-{d0:}))/(1/(1+exp({zhat:}))))/{w1:}))))
 		}
 		else {
-			local denom (denom: (1.`zvar'*({denom}  -(`zvar'*(`tvar'-{d0:})+ ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`tvar'-{d0:}))/(1/(1+exp({zhat:})))))))
-		}
+			local denom (denom: (({denom}  -(`zvar'*(`tvar'-{d0:})- ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`tvar'-{d0:}))/(1/(1+exp({zhat:}))))/{w1:})))
+	
+	}
 	}
 	
 
-	
-	local eqy1 (eqy1: (1.`zvar'*(`yvar'-({y1:  _cons})))) 
-	
-	local eqy1_inst instruments(eqy1:  )
-	
 	
 	
 	if "`omodel'" == "regress" {
@@ -1552,7 +1730,7 @@ local eqips_inst instruments(eqips: `xvarsips')
 		
 		local eqy0_inst instruments(eqy0: `xvarsy' )
 		
-		local num (num: (1.`zvar'*({num}  -(`zvar'*(`yvar'-{y0:})+ ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`yvar'-{y0:}))/(1/(1+exp({zhat:})))))))		
+		local num (num: (({num}  -(`zvar'*(`yvar'-{y0:})- ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`yvar'-{y0:}))/(1/(1+exp({zhat:}))))/{w1:})))		
 	}
 	else if "`omodel'"  == "logit" {
 		
@@ -1561,7 +1739,7 @@ local eqips_inst instruments(eqips: `xvarsips')
 		
 		local eqy0_inst instruments(eqy0: `xvarsy' )
 
-		local num (num: (1.`zvar'*({num}  -(`zvar'*(`yvar'-(exp({y0: })/(1+exp({y0:}))))+ ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`yvar'-(exp({y0: })/(1+exp({y0:})))))/(1/(1+exp({zhat:})))))))
+		local num (num: (({num}  -(`zvar'*(`yvar'-(exp({y0: })/(1+exp({y0:}))))- ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`yvar'-(exp({y0: })/(1+exp({y0:})))))/(1/(1+exp({zhat:}))))/{w1:})))
 		
 	}
 	else if "`omodel'"  == "poisson"  {
@@ -1569,7 +1747,7 @@ local eqips_inst instruments(eqips: `xvarsips')
 		
 		local eqy0_inst instruments(eqy0: `xvarsy' )
 
-		local num (num: (1.`zvar'*({num}  -(`zvar'*(`yvar'-(exp({y0: })))+ ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`yvar'-(exp({y0: }))))/(1/(1+exp({zhat:})))))))		
+		local num (num: (({num}  -(`zvar'*(`yvar'-(exp({y0: })))- ((exp({zhat:})/(1+exp({zhat:})))*(1-`zvar')*(`yvar'-(exp({y0: }))))/(1/(1+exp({zhat:}))))/{w1:})))		
 		
 	}
 	
@@ -1600,28 +1778,34 @@ qui set maxiter 5
  gmm    `eqips' `eqd0'  `eqy0' `eqy1' `num1'  `num0'  `num' `denom'   [pw = `samplew'],   `eqips_inst' `eqd0_inst'  `eqy0_inst' `eqy1_inst' onestep winitial(I) from(initial) quickderivatives vce(`vce')	
 }
 }
-else if "`stat'" == "latt" {  //bence bd1, by1, ie eqd1 ve eqy1 are reluctant
-	if `dmeanz0' !=0 & `dmeanz1' !=1  {
-matrix initial = (`bips', `bd0', `bd1', `by0', `by1', `nums', `denoms')	
-local k = colsof(initial )
-matrix I = I(`k')  
-set maxiter 5
- gmm   `eqips' `eqd0' `eqd1'  `eqy0' `eqy1'  `num' `denom'  [pw = `samplew'],  `eqips_inst' `eqd0_inst' `eqd1_inst' `eqy0_inst' `eqy1_inst' onestep winitial(I) from(initial) quickderivatives vce(`vce')
-		}
-else if `dmeanz0' == 0 & `dmeanz1' !=1 {
-matrix initial = (`bips', `by0', `by1', `nums', `denoms')	
+else if "`stat'" == "latt" {  
+matrix initial = (`bips', `w1s',`denom1s', `num1s')
 local k = colsof(initial )
 matrix I = I(`k')  
 qui set maxiter 1
- gmm   `eqips'  `eqy0' `eqy1'  `num' `denom' [pw = `samplew'],  `eqips_inst'  `eqy0_inst' `eqy1_inst' onestep winitial(I) from(initial) quickderivatives vce(`vce')	
+ gmm    `eqips' `eqw1' `eqd1' `eqy1' [pw = `samplew'],  `eqips_inst' `eqd1_inst'  `eqy1_inst'  onestep winitial(I) from(initial) quickderivatives 
+	
+	if `dmeanz0' !=0 & `dmeanz1' !=1  {
+matrix initial = (`bips', `w1s', `bd0', `denom1s', `by0', `num1s', `nums', `denoms')	
+local k = colsof(initial )
+matrix I = I(`k')  
+set maxiter 5
+ gmm   `eqips' `eqw1' `eqd0' `eqd1'  `eqy0' `eqy1'  `num' `denom'  [pw = `samplew'],  `eqips_inst' `eqd0_inst' `eqd1_inst' `eqy0_inst' `eqy1_inst' onestep winitial(I) from(initial) quickderivatives vce(`vce')
+		}
+else if `dmeanz0' == 0 & `dmeanz1' !=1 {
+matrix initial = (`bips', `w1s', `denom1s', `by0', `num1s', `nums', `denoms')
+local k = colsof(initial )
+matrix I = I(`k')  
+qui set maxiter 1
+ gmm    `eqips' `eqw1' `eqd1'  `eqy0' `eqy1'  `num' `denom'  [pw = `samplew'],  `eqips_inst'  `eqy0_inst' `eqy1_inst' onestep winitial(I) from(initial) quickderivatives vce(`vce')	
 }	
 else if `dmeanz0' !=0 & `dmeanz1' ==1 {
-matrix initial = (`bips', `bd0', `by0', `by1', `nums', `denoms')	
+matrix initial = (`bips', `w1s', `bd0', `by0', `num1s', `nums', `denoms')
 matrix list initial
 local k = colsof(initial )
 matrix I = I(`k')  
 qui set maxiter 5
- gmm   `eqips'  `eqd0' `eqy0' `eqy1'  `num' `denom'  [pw = `samplew'],  `eqips_inst'  `eqd0_inst'  `eqy0_inst' `eqy1_inst'  onestep winitial(I) from(initial) quickderivatives vce(`vce')	
+ gmm    `eqips' `eqw1' `eqd0' `eqy0' `eqy1'  `num' `denom'  [pw = `samplew'],  `eqips_inst'  `eqd0_inst'  `eqy0_inst' `eqy1_inst'  onestep winitial(I) from(initial) quickderivatives vce(`vce')	
 }
 }	
 	
@@ -1863,7 +2047,7 @@ ereturn scalar ipwra_late_var =((1/ated)^2*vary+(atey/ated^2)^2*vard-2*(atey/ate
  scalar ipwra_late = atey/ated
  scalar ipwra_late_se = sqrt((1/ated)^2*vary+(atey/ated^2)^2*vard-2*(atey/ated^3)*covdy)
  scalar ipwra_late_var =((1/ated)^2*vary+(atey/ated^2)^2*vard-2*(atey/ated^3)*covdy)
-	}  //quitely ends here
+	//}  quitely ends here
 ereturn clear
 	// Display results
 if "`stat'" == "late" {
@@ -1900,8 +2084,14 @@ if "`stat'" == "late" {
 	}
 	di as text "IPS Model      : logit"
 	}
-	if "`method'" == "ipw" {
+		if "`method'" == "ipw" {
 	di as text "Estimator      : inverse-probability weights"
+	di as text "Outcome model  : weighted mean"
+	di as text "Treatment model: weighted mean"
+	di as text "IPS Model      : logit"
+	}
+	if "`method'" == "nipw" {
+	di as text "Estimator      : normalized inverse-probability weights"
 	di as text "Outcome model  : weighted mean"
 	di as text "Treatment model: weighted mean"
 	di as text "IPS Model      : logit"
@@ -1989,6 +2179,12 @@ if "`stat'" == "latt" {
 	}
 	if "`method'" == "ipw" {
 	di as text "Estimator      : inverse-probability weights"
+	di as text "Outcome model  : weighted mean"
+	di as text "Treatment model: weighted mean"
+	di as text "IPS Model      : logit"
+	}
+	if "`method'" == "nipw" {
+	di as text "Estimator      : normalized inverse-probability weights"
 	di as text "Outcome model  : weighted mean"
 	di as text "Treatment model: weighted mean"
 	di as text "IPS Model      : logit"
