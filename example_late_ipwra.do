@@ -16,25 +16,30 @@ egen incst= std(inc)
 egen age25st= std(age25)
 egen age25sqst= std(age25sq)
 
-
+cls
 /*LATE estimation and teffects estimation of the numerator */
 late ipwra net_tfa p401 e401 incst age25st age25sqst marr fsize
-
-teffects ipwra (net_tfa incst age25st age25sqst marr fsize) (e401 incst age25st age25sqst marr fsize) , iterate(2)
+late ipwra net_tfa p401 e401 incst age25st age25sqst marr fsize, zmodel(cbps)
+//teffects ipwra (net_tfa incst age25st age25sqst marr fsize) (e401 incst age25st age25sqst marr fsize) , iterate(2)
 
 late ipw net_tfa p401 e401 incst age25st age25sqst marr fsize
+late ipw net_tfa p401 e401 incst age25st age25sqst marr fsize, zmodel(cbps)
+late nipw net_tfa p401 e401 incst age25st age25sqst marr fsize
+late nipw net_tfa p401 e401 incst age25st age25sqst marr fsize, zmodel(cbps)
 
-teffects ipw (net_tfa) (e401 incst age25st age25sqst marr fsize) , iterate(2)
+//teffects ipw (net_tfa) (e401 incst age25st age25sqst marr fsize) , iterate(2)
 
 late ra net_tfa p401 e401 incst age25st age25sqst marr fsize
-
-teffects ra (net_tfa incst age25st age25sqst marr fsize) (e401) , iterate(2)
+late ra net_tfa p401 e401 incst age25st age25sqst marr fsize, zmodel(cbps)
+//teffects ra (net_tfa incst age25st age25sqst marr fsize) (e401) , iterate(2)
 
 late aipw net_tfa p401 e401 incst age25st age25sqst marr fsize
+late aipw net_tfa p401 e401 incst age25st age25sqst marr fsize, zmodel(cbps)
 
-teffects aipw (net_tfa incst age25st age25sqst marr fsize) (e401 incst age25st age25sqst marr fsize) , iterate(2)
+//teffects aipw (net_tfa incst age25st age25sqst marr fsize) (e401 incst age25st age25sqst marr fsize) , iterate(2)
 
 late naipw net_tfa p401 e401 incst age25st age25sqst marr fsize
+late naipw net_tfa p401 e401 incst age25st age25sqst marr fsize, zmodel(cbps)
 
 
 /*LATT estimation and teffects estimation of the numerator */
@@ -47,6 +52,8 @@ display _se[ATET:r1vs0.e401]
 
 late ipw net_tfa p401 e401 incst age25st age25sqst marr fsize, stat(latt)
 
+late nipw net_tfa p401 e401 incst age25st age25sqst marr fsize, stat(latt)
+
 qui teffects ipw (net_tfa) (e401 incst age25st age25sqst marr fsize) , iterate(2) atet
 display _b[ATET:r1vs0.e401]
 display _se[ATET:r1vs0.e401]
@@ -58,6 +65,7 @@ display _b[ATET:r1vs0.e401]
 display _se[ATET:r1vs0.e401]
 
 late aipw net_tfa p401 e401 incst age25st age25sqst marr fsize, stat(latt)
+late naipw net_tfa p401 e401 incst age25st age25sqst marr fsize, stat(latt)
 
 
 use "Finkelstein2012_er_num_mod_12m.dta", clear
