@@ -246,7 +246,12 @@ if "`zmodel'" == "logit" {
  qui predict double `ips'
  }
 else if "`zmodel'" == "cbps" {
+	if "`stat'" == "late" {
   `zmodel' `zvar' `xvarsips' if `touse'==1, samplew(`samplew')
+  }
+  	else if "`stat'" == "latt" {
+  `zmodel' `zvar' `xvarsips' if `touse'==1, samplew(`samplew') stat(att)
+  }
    qui matrix `bips' = e(b)
    qui predict double `ipsxb'
    qui ge `ips' = logistic(`ipsxb')
@@ -464,7 +469,7 @@ local eqips_inst instruments(eqips: `xvarsips')
 
 }
 else if "`zmodel'" == "cbps" {
-local eqips (eqips: (`zvar' - exp({zhat: `xvarsips' _cons})/(1+exp({zhat:})))/((exp({zhat:})/(1+exp({zhat:})))*(1/(1+exp({zhat:})))))
+local eqips (eqips: (`zvar' - ((exp({zhat: `xvarsips' _cons})/(1+exp({zhat:})))/((1/(1+exp({zhat:})))))*(1-`zvar')))
 
 local eqips_inst instruments(eqips: `xvarsips')
 }
@@ -620,7 +625,12 @@ if "`zmodel'" == "logit" {
  qui predict double `ips'
  }
 else if "`zmodel'" == "cbps" {
+		if "`stat'" == "late" {
   `zmodel' `zvar' `xvarsips' if `touse'==1, samplew(`samplew')
+  }
+  	else if "`stat'" == "latt" {
+  `zmodel' `zvar' `xvarsips' if `touse'==1, samplew(`samplew') stat(att)
+  }
    qui matrix `bips' = e(b)
    qui predict double `ipsxb'
    qui ge `ips' = logistic(`ipsxb')
@@ -785,7 +795,7 @@ local eqips_inst instruments(eqips: `xvarsips')
 
 }
 else if "`zmodel'" == "cbps" {
-local eqips (eqips: (`zvar' - exp({zhat: `xvarsips' _cons})/(1+exp({zhat:})))/((exp({zhat:})/(1+exp({zhat:})))*(1/(1+exp({zhat:})))))
+local eqips (eqips: (`zvar' - ((exp({zhat: `xvarsips' _cons})/(1+exp({zhat:})))/((1/(1+exp({zhat:})))))*(1-`zvar')))
 
 local eqips_inst instruments(eqips: `xvarsips')
 }
@@ -897,8 +907,13 @@ if "`zmodel'" == "logit" {
  qui predict double `ips'
  }
 else if "`zmodel'" == "cbps" {
+	if "`stat'" == "late" {
   `zmodel' `zvar' `xvarsips' if `touse'==1, samplew(`samplew')
-   qui matrix `bips' = e(b)
+  }
+  	else if "`stat'" == "latt" {
+  `zmodel' `zvar' `xvarsips' if `touse'==1, samplew(`samplew') stat(att)
+  }
+  qui matrix `bips' = e(b)
    qui predict double `ipsxb'
    qui ge `ips' = logistic(`ipsxb')
   
@@ -1068,7 +1083,7 @@ local eqips_inst instruments(eqips: `xvarsips')
 
 }
 else if "`zmodel'" == "cbps" {
-local eqips (eqips: (`zvar' - exp({zhat: `xvarsips' _cons})/(1+exp({zhat:})))/((exp({zhat:})/(1+exp({zhat:})))*(1/(1+exp({zhat:})))))
+local eqips (eqips: (`zvar' - ((exp({zhat: `xvarsips' _cons})/(1+exp({zhat:})))/((1/(1+exp({zhat:})))))*(1-`zvar')))
 
 local eqips_inst instruments(eqips: `xvarsips')
 }
@@ -1516,7 +1531,12 @@ if "`zmodel'" == "logit" {
  qui predict double `ips'
  }
 else if "`zmodel'" == "cbps" {
+	if "`stat'" == "late" {
   `zmodel' `zvar' `xvarsips' if `touse'==1, samplew(`samplew')
+  }
+  	else if "`stat'" == "latt" {
+  `zmodel' `zvar' `xvarsips' if `touse'==1, samplew(`samplew') stat(att)
+  }
    qui matrix `bips' = e(b)
    qui predict double `ipsxb'
    qui ge `ips' = logistic(`ipsxb')
@@ -1763,7 +1783,7 @@ local eqips_inst instruments(eqips: `xvarsips')
 
 }
 else if "`zmodel'" == "cbps" {
-local eqips (eqips: (`zvar' - exp({zhat: `xvarsips' _cons})/(1+exp({zhat:})))/((exp({zhat:})/(1+exp({zhat:})))*(1/(1+exp({zhat:})))))
+local eqips (eqips: (`zvar' - ((exp({zhat: `xvarsips' _cons})/(1+exp({zhat:})))/((1/(1+exp({zhat:})))))*(1-`zvar')))
 
 local eqips_inst instruments(eqips: `xvarsips')
 }
@@ -1919,7 +1939,13 @@ if "`zmodel'" == "logit" {
  qui predict double `ips'
  }
 else if "`zmodel'" == "cbps" {
+	if "`stat'" == "late" {
   `zmodel' `zvar' `xvarsips' if `touse'==1, samplew(`samplew')
+  }
+  	else if "`stat'" == "latt" {
+  `zmodel' `zvar' `xvarsips' if `touse'==1, samplew(`samplew') stat(att)
+  }
+  
    qui matrix `bips' = e(b)
    qui predict double `ipsxb'
    qui ge `ips' = logistic(`ipsxb')
@@ -2189,7 +2215,7 @@ local eqips_inst instruments(eqips: `xvarsips')
 
 }
 else if "`zmodel'" == "cbps" {
-local eqips (eqips: (`zvar' - exp({zhat: `xvarsips' _cons})/(1+exp({zhat:})))/((exp({zhat:})/(1+exp({zhat:})))*(1/(1+exp({zhat:})))))
+local eqips (eqips: (`zvar' - ((exp({zhat: `xvarsips' _cons})/(1+exp({zhat:})))/((1/(1+exp({zhat:})))))*(1-`zvar')))
 
 local eqips_inst instruments(eqips: `xvarsips')
 }
@@ -2532,21 +2558,35 @@ if "`stat'" == "latt" {
 	else if "`tmodel'" == "logit" {
 		di as text "Treatment model: logit"
 	}
+	if "`zmodel'" == "logit" {
 	di as text "IPS Model      : logit"
 	}
-	if "`method'" == "ipw" {
+	else if "`zmodel'" == "cbps" {
+	di as text "IPS Model      : CBPS"
+	}
+	}
+		if "`method'" == "ipw" {
 	di as text "Estimator      : inverse-probability weights"
 	di as text "Outcome model  : weighted mean"
 	di as text "Treatment model: weighted mean"
+	if "`zmodel'" == "logit" {
 	di as text "IPS Model      : logit"
+	}
+	else if "`zmodel'" == "cbps" {
+	di as text "IPS Model      : CBPS"
+	}
 	}
 	if "`method'" == "nipw" {
 	di as text "Estimator      : normalized inverse-probability weights"
 	di as text "Outcome model  : weighted mean"
 	di as text "Treatment model: weighted mean"
+	if "`zmodel'" == "logit" {
 	di as text "IPS Model      : logit"
 	}
-	
+	else if "`zmodel'" == "cbps" {
+	di as text "IPS Model      : CBPS"
+	}
+	}
 		if "`method'" == "ra" {
 	di as text "Estimator      : regression adjustment"
 		    if "`omodel'" == "regress" {
@@ -2564,9 +2604,10 @@ if "`stat'" == "latt" {
 	else if "`tmodel'" == "logit" {
 		di as text "Treatment model: logit"
 	}
-	di as text "IPS Model      : none"
+	 di as text "IPS Model      : none"
+
 	}
-		if "`method'" == "aipw" {
+	if "`method'" == "aipw" {
 	di as text "Estimator      : augmented IPW"
 		    if "`omodel'" == "regress" {
 		di as text "Outcome model  : linear"
@@ -2583,9 +2624,14 @@ if "`stat'" == "latt" {
 	else if "`tmodel'" == "logit" {
 		di as text "Treatment model: logit"
 	}
+	if "`zmodel'" == "logit" {
 	di as text "IPS Model      : logit"
 	}
-			if "`method'" == "naipw" {
+	else if "`zmodel'" == "cbps" {
+	di as text "IPS Model      : CBPS"
+	}
+	}
+		if "`method'" == "naipw" {
 	di as text "Estimator      : Normalized augmented IPW"
 		    if "`omodel'" == "regress" {
 		di as text "Outcome model  : linear"
@@ -2602,9 +2648,15 @@ if "`stat'" == "latt" {
 	else if "`tmodel'" == "logit" {
 		di as text "Treatment model: logit"
 	}
+	if "`zmodel'" == "logit" {
 	di as text "IPS Model      : logit"
 	}
+	else if "`zmodel'" == "cbps" {
+	di as text "IPS Model      : CBPS"
+	}
+	}
     di as text "Number of obs = " nob
+	
 	 
 	
 	di
