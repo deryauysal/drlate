@@ -417,6 +417,7 @@ if "`stat'" == "latt" {
 	
 	if `dmeanz1'==1 {
 		ge double `d1hat'= 1
+
 	}
 	else {
 		
@@ -443,13 +444,13 @@ if "`stat'" == "latt" {
 	qui predict double `y0hat'
 	
 	
-	qui sum `d1hat'  if `zvar' == 1 [iw = `samplew']
+	qui sum `d1hat'  if `zvar' == 1 & `touse'==1 [iw = `samplew']
 	matrix `denom1s' = r(mean)
-	qui sum `d0hat'  if `zvar' == 1 [iw = `samplew']
+	qui sum `d0hat'  if `zvar' == 1 & `touse'==1 [iw = `samplew']
 	matrix `denom0s' = r(mean)
-	qui sum `y1hat'  if `zvar' == 1 [iw = `samplew']
+	qui sum `y1hat'  if `zvar' == 1 & `touse'==1 [iw = `samplew']
 	matrix `num1s' = r(mean)
-	qui sum `y0hat'  if `zvar' == 1 [iw = `samplew']
+	qui sum `y0hat'  if `zvar' == 1 & `touse'==1 [iw = `samplew']
 	matrix `num0s' = r(mean)
 	matrix `nums' = `num1s'-`num0s'
 	matrix `denoms' = `denom1s'-`denom0s'
