@@ -16,6 +16,7 @@ egen incst= std(inc)
 egen age25st= std(age25)
 egen age25sqst= std(age25sq)
 
+log using LATE_est.log,replace
 cls
 /*LATE estimation and teffects estimation of the numerator */
 late ipwra net_tfa p401 e401 incst age25st age25sqst marr fsize
@@ -24,6 +25,7 @@ late ipwra net_tfa p401 e401 incst age25st age25sqst marr fsize, zmodel(cbps)
 
 late ipw net_tfa p401 e401 incst age25st age25sqst marr fsize
 late ipw net_tfa p401 e401 incst age25st age25sqst marr fsize, zmodel(cbps)
+
 late nipw net_tfa p401 e401 incst age25st age25sqst marr fsize
 late nipw net_tfa p401 e401 incst age25st age25sqst marr fsize, zmodel(cbps)
 
@@ -41,8 +43,27 @@ late aipw net_tfa p401 e401 incst age25st age25sqst marr fsize, zmodel(cbps)
 late naipw net_tfa p401 e401 incst age25st age25sqst marr fsize
 late naipw net_tfa p401 e401 incst age25st age25sqst marr fsize, zmodel(cbps)
 
+log close
 
 /*LATT estimation and teffects estimation of the numerator */
+log using LATT_est.log,replace
+cls
+late ipwra net_tfa p401 e401 inc age25 age25sq marr fsize, stat(latt)
+late ipwra net_tfa p401 e401 inc age25 age25sq marr fsize, stat(latt) zmodel(cbps)
+late ipw net_tfa p401 e401 inc age25 age25sq marr fsize, stat(latt) 
+late ipw net_tfa p401 e401 inc age25 age25sq marr fsize, stat(latt) zmodel(cbps) 
+late nipw net_tfa p401 e401 inc age25 age25sq marr fsize, stat(latt)
+late nipw net_tfa p401 e401 inc age25 age25sq marr fsize, stat(latt) zmodel(cbps)
+late ra net_tfa p401 e401 inc age25 age25sq marr fsize, stat(latt)
+late ra net_tfa p401 e401 inc age25 age25sq marr fsize, stat(latt) zmodel(cbps)
+late aipw net_tfa p401 e401 inc age25 age25sq marr fsize, stat(latt)
+late aipw net_tfa p401 e401 inc age25 age25sq marr fsize, stat(latt) zmodel(cbps)
+late naipw net_tfa p401 e401 inc age25 age25sq marr fsize, stat(latt)
+late naipw net_tfa p401 e401 inc age25 age25sq marr fsize, stat(latt) zmodel(cbps)
+
+log close
+
+
 cls
 late ipwra net_tfa p401 e401 incst age25st age25sqst marr fsize, stat(latt)
 
