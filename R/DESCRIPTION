@@ -1,0 +1,27 @@
+Package: drlate
+Type: Package
+Title: Doubly Robust Estimation of Local Average Treatment Effects
+Version: 1.0.0
+Authors@R: c(
+    person("S. Derya", "Uysal", email = "derya.uysal@econ.lmu.de", role = c("aut", "cre")),
+    person("Tymon", "Słoczyński", email = "tslocz@brandeis.edu", role = "aut"),
+    person("Jeffrey M.", "Wooldridge", email = "wooldri1@msu.edu", role = "aut"))
+Description: Estimates the local average treatment effect (LATE) and the local
+    average treatment effect on the treated (LATT) with a binary instrument,
+    using inverse probability weighted regression adjustment (IPWRA), inverse
+    probability weighting (IPW), augmented IPW (AIPW), or regression
+    adjustment (RA). The instrument propensity score can be estimated by
+    maximum likelihood, covariate balancing (CBPS), or inverse probability
+    tilting (IPT). All nuisance models and the causal parameter are estimated
+    as one system of moment conditions, so standard errors account for all
+    estimation steps. R version of the Stata command drlate; see Słoczyński,
+    Uysal, and Wooldridge (2022) <arXiv:2208.01300>.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports:
+    numDeriv,
+    stats,
+    utils
+Suggests:
+    haven
+RoxygenNote: 7.3.1
